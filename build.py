@@ -227,6 +227,7 @@ strong{font-weight:600;color:var(--t1)}
 .btn:hover{border-color:var(--brand-2);color:var(--t1)}
 .btn[aria-pressed=true]{background:var(--brand-soft);border-color:var(--brand-1);color:var(--brand-1)}
 .count{font-size:12px;color:var(--t3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.reading{font-size:12px;color:var(--t3);white-space:nowrap}
 .jump{display:none;height:30px;max-width:38vw;padding:0 6px;border-radius:8px;border:1px solid var(--divider);
   background:var(--bg-elv);color:var(--t2);font:500 12px/1 var(--font)}
 
@@ -246,6 +247,10 @@ strong{font-weight:600;color:var(--t1)}
 .d0{background:var(--brand-1)}.d1{background:var(--green-1)}.d2{background:var(--t3)}
 
 main{flex:1;min-width:0;padding:26px 40px 140px;max-width:940px}
+.personal{margin:0 0 28px;padding:18px 20px;border:1px solid var(--divider);border-radius:14px;background:linear-gradient(135deg,var(--brand-soft),transparent 68%)}
+.personal h2{font-size:17px;margin:0 0 4px;letter-spacing:-.15px}
+.personal p{font-size:13px;color:var(--t2);margin:0 0 14px;line-height:1.7}
+.quick{display:flex;flex-wrap:wrap;gap:8px}.quick .btn{height:32px}.quick .resume{border-color:var(--brand-1);color:var(--brand-1)}
 section{margin-bottom:44px}
 .sec-h{display:flex;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:2px solid var(--divider);margin-bottom:6px}
 .sec-h h2{font-size:22px;font-weight:600;margin:0;letter-spacing:-.2px}
@@ -257,6 +262,8 @@ section{margin-bottom:44px}
 .num{flex:none;min-width:24px;height:24px;padding:0 6px;border-radius:7px;background:var(--bg-mute);color:var(--t3);
   font:600 12px/24px var(--font);text-align:center;font-variant-numeric:tabular-nums}
 .chead h3{margin:0;font-size:16px;font-weight:600;line-height:1.5;letter-spacing:-.1px}
+.fav{flex:none;margin-left:auto;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--t3);font:20px/1 var(--font);cursor:pointer}
+.fav:hover,.fav[aria-pressed=true]{color:var(--yellow-1);background:var(--yellow-soft)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px 34px}
 .badge{font:500 11px/1 var(--font);padding:4px 9px;border-radius:999px;border:1px solid transparent}
 .gA{background:var(--green-soft);color:var(--green-1);border-color:var(--green-soft)}
@@ -310,16 +317,17 @@ footer a{color:var(--t2)}
   .jump{order:2}
   #theme{order:3}
   #f-all{order:4}#f-a{order:5}#f-plain{order:6}
-  .count{order:7;margin-left:auto}
-  .search{order:8;width:auto;max-width:none;flex:1 1 100%;margin-top:2px}
+  #f-focus{order:7}#f-saved{order:8}.count,.reading{order:9;margin-left:auto}
+  .search{order:10;width:auto;max-width:none;flex:1 1 100%;margin-top:2px}
   .search input{height:34px}
   .search kbd{display:none}
   /* 向下滚动后收成一行（标题+搜索+明暗），把竖向空间还给正文；滚回顶部再展开 */
   body.compact .jump,body.compact #f-all,body.compact #f-a,
-  body.compact #f-plain,body.compact .count{display:none}
+  body.compact #f-plain,body.compact #f-focus,body.compact #f-saved,body.compact .count,body.compact .reading{display:none}
   body.compact .search{order:2;flex:1 1 120px;margin-top:0}
   body.compact #theme{order:3}
   main{padding:16px 13px 110px}
+  .personal{padding:15px 14px;margin-bottom:22px}
   .sec-h h2{font-size:19px}
   .card{padding:14px 14px 12px;border-radius:10px;margin-bottom:10px}
   .chead h3{font-size:15px}
@@ -339,7 +347,7 @@ footer a{color:var(--t2)}
   .jump{max-width:32vw}
 }
 @media print{
-  .bar,.toc,#top{display:none}
+  .bar,.toc,#top,.personal{display:none}
   main{max-width:none;padding:0}
   .card{break-inside:avoid;border-color:#ccc}
   .src .sbody{display:block}
@@ -383,7 +391,8 @@ def render_entry(e, sec_no):
                     % ("（%d 条文献）" % n if n else "", inline(src)))
 
     return ('<article class="card" id="s%d-%d" data-grade="%s" data-ratio="%s">'
-            '<div class="chead"><span class="num">%d</span><h3>%s</h3></div>'
+            '<div class="chead"><span class="num">%d</span><h3>%s</h3>'
+            '<button class="fav" type="button" aria-label="收藏这条" aria-pressed="false" title="收藏这条">☆</button></div>'
             '<div class="chips">%s</div>'
             '<p class="plain">%s</p>'
             '<div class="fields">%s</div>%s</article>') % (
@@ -401,9 +410,17 @@ const jump=document.getElementById('jump');
 const fAll=document.getElementById('f-all');
 const fA=document.getElementById('f-a');
 const fP=document.getElementById('f-plain');
+const fFocus=document.getElementById('f-focus');
+const fSaved=document.getElementById('f-saved');
+const reading=document.getElementById('reading');
 const themeBtn=document.getElementById('theme');
 const topBtn=document.getElementById('top');
-let grade=null, plainOnly=false;
+const focusSections=new Set(['sec2','sec3','sec4','sec5','sec13','sec14','sec23','sec24','sec28']);
+let grade=null, plainOnly=false, focusOnly=false, savedOnly=false;
+let saved=new Set();
+try{saved=new Set(JSON.parse(localStorage.getItem('hltb-saved')||'[]'));}catch(e){}
+function storeSaved(){try{localStorage.setItem('hltb-saved',JSON.stringify([...saved]));}catch(e){}}
+cards.forEach(c=>{const b=c.querySelector('.fav');if(!b)return;const on=saved.has(c.id);b.setAttribute('aria-pressed',String(on));b.textContent=on?'★':'☆';b.addEventListener('click',()=>{const next=!saved.has(c.id);if(next)saved.add(c.id);else saved.delete(c.id);b.setAttribute('aria-pressed',String(next));b.textContent=next?'★':'☆';storeSaved();apply();});});
 
 /* 顶栏高度会随换行变化，交给 JS 实测，锚点跳转才不会被顶栏盖住 */
 function syncBar(){
@@ -450,6 +467,8 @@ function apply(){
   cards.forEach(c=>{
     let ok=true;
     if(grade && c.dataset.grade!==grade) ok=false;
+    if(ok && focusOnly && !focusSections.has(c.closest('section').id)) ok=false;
+    if(ok && savedOnly && !saved.has(c.id)) ok=false;
     if(ok && term && !c.textContent.toLowerCase().includes(term)) ok=false;
     c.classList.toggle('hidden',!ok);
     if(ok) shown++;
@@ -475,14 +494,18 @@ q.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(apply,90);}
 function setMode(mode){
   grade=(mode==='A')?'A':null;
   plainOnly=(mode==='plain');
+  focusOnly=(mode==='focus');
+  savedOnly=(mode==='saved');
   document.body.classList.toggle('plain-only',plainOnly);
-  const map={'all':fAll,'A':fA,'plain':fP};
+  const map={'all':fAll,'A':fA,'plain':fP,'focus':fFocus,'saved':fSaved};
   Object.keys(map).forEach(k=>map[k].setAttribute('aria-pressed',String(k===mode)));
   apply();
 }
 fAll.onclick=()=>setMode('all');
 fA.onclick=()=>setMode('A');
 fP.onclick=()=>setMode('plain');
+fFocus.onclick=()=>setMode('focus');
+fSaved.onclick=()=>setMode('saved');
 fAll.setAttribute('aria-pressed','true');
 
 if(jump){
@@ -509,6 +532,10 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&document.activeElement===q){q.value='';apply();q.blur();}
 });
 topBtn.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>{const el=document.getElementById(b.dataset.jump);if(el)el.scrollIntoView({block:'start'});}));
+const last=localStorage.getItem('hltb-last-card');
+const resume=document.getElementById('resume');
+if(resume){resume.hidden=!last;resume.addEventListener('click',()=>{const el=document.getElementById(last);if(el)el.scrollIntoView({block:'start'});});}
 /* 滚动状态：① 顶栏收起（手机）② 回到顶部按钮出现。
    用 rAF 节流，避免滚动时每帧都跑；阈值留迟滞区间，防止在临界点来回抖动。 */
 let compact=false, ticking=false;
@@ -532,6 +559,7 @@ const io=new IntersectionObserver(es=>{
   es.forEach(e=>{ if(e.isIntersecting){
     if(e.target.classList.contains('card'))
       links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));
+    if(e.target.classList.contains('card')){try{localStorage.setItem('hltb-last-card',e.target.id);}catch(x){}const n=cards.indexOf(e.target)+1;if(reading)reading.textContent='读到 '+n+' / '+cards.length;if(resume)resume.hidden=false;}
     else if(jump && e.target.tagName==='SECTION')
       jump.value=e.target.id;
   }});
@@ -595,11 +623,14 @@ def main():
            '<button class="btn" id="f-all">全部</button>'
            '<button class="btn" id="f-a">只看 A 级</button>'
            '<button class="btn" id="f-plain">只看说人话</button>'
+           '<button class="btn" id="f-focus">重点</button>'
+           '<button class="btn" id="f-saved">收藏</button>'
            '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/>'
            '<path d="M20 20l-3.5-3.5"/></svg>'
            '<input id="q" type="search" placeholder="搜索标题、说人话、收益…" autocomplete="off">'
            '<kbd>/</kbd></div>'
            '<span class="count" id="cnt">%d / %d 条</span>'
+           '<span class="reading" id="reading">从头开始</span>'
            '<button class="btn" id="theme">明/暗</button></header>' % (
                SCOPE, "".join(jump_opts), total, total))
 
@@ -616,11 +647,12 @@ def main():
               '由 build.py 生成。</footer>'
               % (src_line, total, grade_cnt["A"], grade_cnt["B"], grade_cnt["C"], link_total))
 
-    shell = ('<div class="shell"><aside class="toc">%s</aside><main>%s'
+    personal = ('<section class="personal" aria-label="长期行动阅读"><h2>长期行动阅读</h2><p>把有用的条目收进收藏；阅读位置和收藏仅保存在这台设备的浏览器中。</p><div class="quick"><button class="btn resume" id="resume" type="button" hidden>继续阅读</button><button class="btn" type="button" data-jump="sec2">身体底盘</button><button class="btn" type="button" data-jump="sec3">精力管理</button><button class="btn" type="button" data-jump="sec4">时间与执行</button><button class="btn" type="button" data-jump="sec23">长期学习</button><button class="btn" type="button" data-jump="sec28">体态与身体</button></div></section>')
+    shell = ('<div class="shell"><aside class="toc">%s</aside><main>%s%s'
              '<div class="empty hidden" id="empty">没有匹配的条目</div>%s'
              '</main></div>'
              '<button id="top" title="回到顶部" aria-label="回到顶部">↑</button>'
-             % ("".join(sec_toc), "".join(sec_html), footer))
+             % ("".join(sec_toc), personal, "".join(sec_html), footer))
 
     # 注意：JS 字符串只含脚本体，<script> 开合标签在这里拼。
     # 之前漏了开标签，导致整段 JS 被当纯文本渲染在页面底部、脚本从未执行。
